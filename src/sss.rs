@@ -10,14 +10,14 @@ public_nat_mod!(
     modulo_value: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
 );
 
-type Point = (FieldElement, FieldElement);
+pub type Point = (FieldElement, FieldElement);
 
 // 2nd arg -> t, 3rd arg -> n
 //todo: use named struct instead?
 pub type ShamirShare = (Point, usize, usize);
 
 bytes!(Bytes32, 32);
-type SharedSecret = Bytes32;
+pub type SharedSecret = Bytes32;
 
 // APIs Planned:
 // 1. generate_shares(secret: ByteSeq, t: usize, n: usize) -> Seq<ShamirShare>
@@ -53,7 +53,7 @@ fn eval_poly(
     let mut res = poly[0];
     let len = poly.len();
 
-    for i in 1..(len-1) {
+    for i in 1..len {
         res = res + poly[i]*(x.pow(i as u128));
     }
 
@@ -75,19 +75,19 @@ pub fn generate_shares(
 
     poly[0] = FieldElement::from_byte_seq_be(&secret);
 
-    // generate random coefficients for `poly`
-    for i in 1..(t-1) {
+    // generate coefficients for the `poly`
+    for i in 1..t {
         let entropy = nonce32(secret, t, n, i);
         let coeff = FieldElement::from_byte_seq_be(&entropy);
         poly[i] = coeff;
     }
 
-    for i in 0..(n-1) {
+    for i in 1..(n+1) {
         let xi = FieldElement::from_literal(i as u128);
         let yi = eval_poly(&poly, xi);
         let si: ShamirShare = ((xi, yi), t, n);
 
-        out[i] = si;
+        out[i-1] = si;
     }
 
     out
