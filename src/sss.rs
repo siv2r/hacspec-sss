@@ -19,12 +19,6 @@ pub type ShamirShare = (Point, usize, usize);
 bytes!(Bytes32, 32);
 pub type SharedSecret = Bytes32;
 
-// APIs Planned:
-// 1. generate_shares(secret: ByteSeq, t: usize, n: usize) -> Seq<ShamirShare>
-//    1.1 we use `usize` (instead of `FieldElement`) for t and n for simplicity
-// 2. recover_secret(shares: &Seq<ShamirShare>) -> FieldElement
-//    2.1 lagrange_interpolate(shares &Seq<ShamirShare>) -> FieldElement
-
 // avoids tagged hash for simplicity
 fn nonce32(
     secret: SharedSecret,
@@ -83,12 +77,36 @@ pub fn generate_shares(
     }
 
     for i in 1..(n+1) {
-        let xi = FieldElement::from_literal(i as u128);
-        let yi = eval_poly(&poly, xi);
-        let si: ShamirShare = ((xi, yi), t, n);
+        let x_i = FieldElement::from_literal(i as u128);
+        let y_i = eval_poly(&poly, x_i);
+        let s_i: ShamirShare = ((x_i, y_i), t, n);
 
-        out[i-1] = si;
+        out[i-1] = s_i;
     }
 
     out
+}
+
+pub fn recover_secret(shares: &Seq<ShamirShare>) -> SharedSecret {
+    let mut res = FieldElement::ZERO();
+    // length of co-signers set (t <= alpha <= n)
+    let alpha = shares.len();
+
+    // eval lagrange interpolated poly (at x = 0)
+    for i in 1..(alpha+1) {
+        let ((x_i, y_i), _, _) = shares[i-1];
+        let mut lam_i = FieldElement::ONE();
+
+        // eval lagrange basis poly of y_i (at x = 0)
+        for j in 1..(alpha+1) {
+            if j != i {
+                let ((x_j, _), _, _) = shares[j-1];
+                lam_i = lam_i*(x_j/(x_j - x_i));
+            };
+        }
+
+        res = res + lam_i*y_i;
+    }
+
+    SharedSecret::from_seq(&res.to_byte_seq_be())
 }
