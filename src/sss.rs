@@ -10,11 +10,8 @@ public_nat_mod!(
     modulo_value: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
 );
 
-pub type Point = (FieldElement, FieldElement);
-
-// 2nd arg -> t, 3rd arg -> n
 //todo: use named struct instead?
-pub type ShamirShare = (Point, usize, usize);
+pub type ShamirShare = (FieldElement, FieldElement);
 
 bytes!(Bytes32, 32);
 pub type SharedSecret = Bytes32;
@@ -79,7 +76,7 @@ pub fn generate_shares(
     for i in 1..(n+1) {
         let x_i = FieldElement::from_literal(i as u128);
         let y_i = eval_poly(&poly, x_i);
-        let s_i: ShamirShare = ((x_i, y_i), t, n);
+        let s_i: ShamirShare = (x_i, y_i);
 
         out[i-1] = s_i;
     }
@@ -94,13 +91,13 @@ pub fn recover_secret(shares: &Seq<ShamirShare>) -> SharedSecret {
 
     // eval lagrange interpolated poly (at x = 0)
     for i in 1..(alpha+1) {
-        let ((x_i, y_i), _, _) = shares[i-1];
+        let (x_i, y_i) = shares[i-1];
         let mut lam_i = FieldElement::ONE();
 
         // eval lagrange basis poly of y_i (at x = 0)
         for j in 1..(alpha+1) {
             if j != i {
-                let ((x_j, _), _, _) = shares[j-1];
+                let (x_j, _) = shares[j-1];
                 lam_i = lam_i*(x_j/(x_j - x_i));
             };
         }
