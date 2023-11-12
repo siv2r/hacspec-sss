@@ -32,8 +32,18 @@ fn test_vector1() {
         n,
     );
 
+    // test generate_shares API
     let gen_shares = generate_shares(seckey, t, n);
     for i in 1..n {
         assert_eq!(gen_shares[i-1], expected_shares[i-1]);
     }
+
+    // test recover_secret API
+    let mut shares = Seq::<ShamirShare>::new(t);
+    for i in 1..(t+1) {
+        shares[i-1] = expected_shares[i-1];
+    }
+
+    let recovered_secret = recover_secret(&shares);
+    assert_eq!(recovered_secret.to_hex(), seckey.to_hex());
 }
